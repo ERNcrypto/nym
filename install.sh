@@ -21,7 +21,7 @@ fi
 sleep 1 && curl -s https://api.nodes.guru/logo.sh | bash && sleep 1
 
 # Проверка, установлен ли node_id; если нет, запрос имени узла у пользователя
-if [ ! $node_id ]; then
+if [ -z "$node_id" ]; then
 read -p "Введите имя узла: " node_id
 echo 'export node_id='\"${node_id}\" >> $HOME/.bash_profile
 fi
@@ -31,11 +31,8 @@ echo 'source $HOME/.bashrc' >> $HOME/.bash_profile
 . $HOME/.bash_profile
 echo 'Имя вашего узла: ' $node_id
 
-# Обновление системы
+# Обновление системы и установка необходимых пакетов
 sudo apt update < "/dev/null"
-
-# Пауза и установка необходимых пакетов
-sleep 1
 sudo dpkg --configure -a
 sudo apt install ufw make clang pkg-config libssl-dev build-essential git -y -qq < "/dev/null"
 
@@ -54,24 +51,26 @@ git checkout $LATEST_RELEASE
 cargo build --release --bin nym-node
 sudo mv target/release/nym-node /usr/local/bin/
 
-# Инициализация узла Nym с использованием nym-node и настройка брандмауэра
-nym-node --id $node_id --init # Используем nym-node с параметрами инициализации
+# Инициализация узла Nym
+nym-node init --id $node_id --host $(curl -s ipinfo.io/ip)
+
+# Настройка брандмауэра
 sudo ufw allow 1789,1790,8000,22,80,443/tcp
 
 # Настройка хранения логов в systemd и перезагрузка systemd-journald
-sudo tee <<EOF >/dev/null /etc/systemd/journald.conf
+sudo tee /etc/systemd/journald.conf <<EOF >/dev/null
 Storage=persistent
 EOF
 sudo systemctl restart systemd-journald
 
 # Создание и настройка сервиса systemd для управления узлом Nym
-sudo tee <<EOF >/dev/null /etc/systemd/system/nym-node.service
+sudo tee /etc/systemd/system/nym-node.service <<EOF >/dev/null
 [Unit]
 Description=Nym Node
 
 [Service]
 User=$USER
-ExecStart=/usr/local/bin/nym-node --id '$node_id' run
+ExecStart=/usr/local/bin/nym-node run --id '$node_id'
 KillSignal=SIGINT
 Restart=on-failure
 RestartSec=30
@@ -85,14 +84,14 @@ EOF
 sudo echo "DefaultLimitNOFILE=65535" >> /etc/systemd/system.conf
 sudo systemctl daemon-reload
 sudo systemctl enable nym-node
-sudo systemctl restart nym-node
+sudo systemctl start nym-node
 
 # Проверка статуса узла и вывод информации о состоянии установки
 echo -e '\n\e[42mПроверка состояния узла\e[0m\n' && sleep 1
-if service nym-node status | grep -q "active (running)"; then
+if systemctl is-active --quiet nym-node; then
   echo -e "Ваш узел Nym \e[32mустановлен и работает\e[39m!"
-  echo -e "Вы можете проверить состояние узла с помощью команды \e[7mservice nym-node status\e[0m"
-  echo -е "Нажмите \e[7mQ\e[0m для выхода из меню состояния"
+  echo -e "Вы можете проверить состояние узла с помощью команды \e[7msystemctl status nym-node\e[0m"
+  echo -e "Нажмите \e[7mQ\e[0m для выхода из меню состояния"
 else
-  echo -е "Ваш узел Nym \e[31mне был установлен корректно\e[39m, пожалуйста, переустановите."
+  echo -e "Ваш узел Nym \e[31mне был установлен корректно\e[39m, пожалуйста, переустановите."
 fi
