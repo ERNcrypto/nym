@@ -55,7 +55,7 @@ cargo build --release --bin nym-node
 sudo mv target/release/nym-node /usr/local/bin/
 
 # Инициализация узла Nym с использованием nym-node и настройка брандмауэра
-nym-node init --id $node_id
+nym-node --id $node_id --init # Используем nym-node с параметрами инициализации
 sudo ufw allow 1789,1790,8000,22,80,443/tcp
 
 # Настройка хранения логов в systemd и перезагрузка systemd-journald
@@ -71,7 +71,7 @@ Description=Nym Node
 
 [Service]
 User=$USER
-ExecStart=/usr/local/bin/nym-node run --id '$node_id'
+ExecStart=/usr/local/bin/nym-node --id '$node_id' run
 KillSignal=SIGINT
 Restart=on-failure
 RestartSec=30
@@ -92,7 +92,7 @@ echo -e '\n\e[42mПроверка состояния узла\e[0m\n' && sleep 1
 if service nym-node status | grep -q "active (running)"; then
   echo -e "Ваш узел Nym \e[32mустановлен и работает\e[39m!"
   echo -e "Вы можете проверить состояние узла с помощью команды \e[7mservice nym-node status\e[0m"
-  echo -e "Нажмите \e[7mQ\e[0m для выхода из меню состояния"
+  echo -е "Нажмите \e[7mQ\e[0m для выхода из меню состояния"
 else
-  echo -e "Ваш узел Nym \e[31mне был установлен корректно\e[39m, пожалуйста, переустановите."
+  echo -е "Ваш узел Nym \e[31mне был установлен корректно\e[39m, пожалуйста, переустановите."
 fi
