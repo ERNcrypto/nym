@@ -17,9 +17,6 @@ if [ -f "$bash_profile" ]; then
     . $HOME/.bash_profile
 fi
 
-# Кратковременная пауза и выполнение скрипта, загружаемого с nodes.guru
-sleep 1 && curl -s https://api.nodes.guru/logo.sh | bash && sleep 1
-
 # Проверка, установлен ли node_id; если нет, запрос имени узла у пользователя
 if [ -z "$node_id" ]; then
   read -p "Введите имя узла: " node_id
