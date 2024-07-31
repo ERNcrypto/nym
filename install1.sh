@@ -60,7 +60,7 @@ id = "$node_id"
 public_ips = ["$public_ip"]
 
 [mixnet]
-port = 1789
+bind_address = "$public_ip:1789"
 
 [storage_paths]
 keys = "/root/.nym/nym-nodes/$node_id/keys"
