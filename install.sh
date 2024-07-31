@@ -52,7 +52,7 @@ cargo build --release --bin nym-node
 sudo mv target/release/nym-node /usr/local/bin/
 
 # Инициализация узла Nym
-nym-node init --id $node_id --host $(curl -s ipinfo.io/ip)
+nym-node run --id $node_id --hostname $(curl -s ipinfo.io/ip)
 
 # Настройка брандмауэра
 sudo ufw allow 1789,1790,8000,22,80,443/tcp
