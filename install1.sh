@@ -63,7 +63,7 @@ public_ips = ["$public_ip"]
 bind_address = "$public_ip:1789"
 
 [storage_paths]
-keys = "/root/.nym/nym-nodes/$node_id/keys"
+keys = { private_identity = "/root/.nym/nym-nodes/$node_id/keys/private_identity.pem", public_identity = "/root/.nym/nym-nodes/$node_id/keys/public_identity.pem", private_sphinx = "/root/.nym/nym-nodes/$node_id/keys/private_sphinx.pem", public_sphinx = "/root/.nym/nym-nodes/$node_id/keys/public_sphinx.pem" }
 clients = "/root/.nym/nym-nodes/$node_id/clients"
 EOL
 
