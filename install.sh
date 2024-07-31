@@ -1,94 +1,34 @@
 #!/bin/bash
 
-# Функция для проверки существования команды
-exists() {
-  command -v "$1" >/dev/null 2>&1
-}
+# Установка уникального идентификатора узла (замените "Unicombase" на ваш идентификатор)
+node_id="Unicombase"
 
-# Проверка, установлен ли curl, и его установка, если он отсутствует
-if exists curl; then
-  echo "curl установлен"
-else
-  sudo apt update && sudo apt install curl -y < "/dev/null"
-fi
-
-# Определение пути к .bash_profile и его загрузка, если файл существует
-bash_profile=$HOME/.bash_profile
-if [ -f "$bash_profile" ]; then
-    . $HOME/.bash_profile
-fi
-
-# Кратковременная пауза и выполнение скрипта, загружаемого с nodes.guru
-sleep 1 && curl -s https://api.nodes.guru/logo.sh | bash && sleep 1
-
-# Проверка, установлен ли node_id; если нет, запрос имени узла у пользователя
-if [ -z "$node_id" ]; then
-  read -p "Введите имя узла: " node_id
-  echo 'export node_id='\"${node_id}\" >> $HOME/.bash_profile
-fi
-
-# Добавление source .bashrc в .bash_profile и его загрузка
-echo 'source $HOME/.bashrc' >> $HOME/.bash_profile
-. $HOME/.bash_profile
-echo 'Имя вашего узла: ' $node_id
-
-# Обновление системы и установка необходимых пакетов
-sudo apt update < "/dev/null"
-sudo dpkg --configure -a
-sudo apt install ufw make clang pkg-config libssl-dev build-essential git -y -qq < "/dev/null"
-
-# Установка Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-source $HOME/.cargo/env
-rustup update
-
-# Клонирование репозитория Nym и компиляция
-cd $HOME
-rm -rf nym
-git clone https://github.com/nymtech/nym.git
-cd nym
-LATEST_RELEASE=$(curl -s "https://api.github.com/repos/nymtech/nym/releases" | grep '"tag_name":' | awk -F '"' {'print $4'} | head -1)
-git checkout $LATEST_RELEASE
-cargo build --release --bin nym-node
-sudo mv target/release/nym-node /usr/local/bin/
-
-# Получение внешнего IP-адреса и добавление в конфигурацию
-my_ip=$(curl -s ipinfo.io/ip)
+# Создание папки конфигурации, если она не существует
 mkdir -p /root/.nym/nym-nodes/$node_id/config
-echo '[host]' > /root/.nym/nym-nodes/$node_id/config/config.toml
-echo 'public_ips = ["'$my_ip'"]' >> /root/.nym/nym-nodes/$node_id/config/config.toml
 
-# Настройка брандмауэра
-sudo ufw allow 1789,1790,8000,22,80,443/tcp
+# Получение публичного IP-адреса
+public_ip=$(curl -s ipinfo.io/ip)
 
-# Настройка хранения логов в systemd и перезагрузка systemd-journald
-sudo tee /etc/systemd/journald.conf <<EOF >/dev/null
-Storage=persistent
-EOF
-sudo systemctl restart systemd-journald
+# Создание файла конфигурации с корректными параметрами
+cat <<EOL > /root/.nym/nym-nodes/$node_id/config/config.toml
+id = "$node_id"
 
-# Создание и настройка сервиса systemd для управления узлом Nym
-sudo tee /etc/systemd/system/nym-node.service <<EOF >/dev/null
-[Unit]
-Description=Nym Node
+[host]
+public_ips = ["$public_ip"]
 
-[Service]
-User=$USER
-ExecStart=/usr/local/bin/nym-node run --id '$node_id' --hostname '$my_ip' --accept-operator-terms-and-conditions
-KillSignal=SIGINT
-Restart=on-failure
-RestartSec=30
-StartLimitInterval=350
-StartLimitBurst=10
-LimitNOFILE=65535
+[logging]
+level = "info"
 
-[Install]
-WantedBy=multi-user.target
-EOF
-sudo echo "DefaultLimitNOFILE=65535" >> /etc/systemd/system.conf
+[mixnet]
+port = 1789
+
+[storage_paths]
+database_path = "/root/.nym/nym-nodes/$node_id/data/db.sqlite"
+EOL
+
+# Перезапуск службы nym-node
 sudo systemctl daemon-reload
-sudo systemctl enable nym-node
-sudo systemctl start nym-node
+sudo systemctl restart nym-node
 
 # Проверка статуса узла и вывод информации о состоянии установки
 echo -e '\n\e[42mПроверка состояния узла\e[0m\n' && sleep 1
