@@ -1,117 +1,46 @@
 #!/bin/bash
 
-# Функция для проверки существования команды
-exists()
-{
-  command -v "$1" >/dev/null 2>&1
-}
-
-# Проверка, установлен ли curl, и его установка, если он отсутствует
-if ! exists curl; then
-  sudo apt update && sudo apt install curl -y < "/dev/null"
-fi
-
-# Определение пути к .bash_profile и его загрузка, если файл существует
-bash_profile=$HOME/.bash_profile
-if [ -f "$bash_profile" ]; then
-    . $HOME/.bash_profile
-fi
-
-# Проверка, установлен ли node_id; если нет, запрос имени узла у пользователя
-if [ -z "$node_id" ]; then
-  read -p "Введите имя узла: " node_id
-  echo 'export node_id='\"${node_id}\" >> $HOME/.bash_profile
-fi
-
-# Загрузка переменных окружения
-echo 'source $HOME/.bashrc' >> $HOME/.bash_profile
-. $HOME/.bash_profile
-echo 'Имя вашего узла: ' $node_id
+# Запрос адреса кошелька NYM
+echo "Введите ваш адрес кошелька NYM:"
+read NYM_WALLET
 
 # Обновление системы и установка необходимых пакетов
-sudo apt update < "/dev/null"
-sudo dpkg --configure -a
-sudo apt install ufw make clang pkg-config libssl-dev build-essential git -y -qq < "/dev/null"
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y curl jq
 
-# Установка Rust
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-source $HOME/.cargo/env
-rustup update
+# Определение публичного IP-адреса
+SERVER_IP=$(curl -s https://api.ipify.org)
 
-# Клонирование репозитория Nym и компиляция
-cd $HOME
-rm -rf nym
-git clone https://github.com/nymtech/nym.git
-cd nym
-LATEST_RELEASE=$(curl -s "https://api.github.com/repos/nymtech/nym/releases/latest" | grep '"tag_name":' | awk -F '"' '{print $4}')
-git checkout $LATEST_RELEASE
-cargo build --release --bin nym-node
-sudo mv target/release/nym-node /usr/local/bin/
+# Скачивание и установка бинарного файла миксноды
+curl -LO https://nymtech.net/download/nym-mixnode
+chmod +x nym-mixnode
+sudo mv nym-mixnode /usr/local/bin/
 
-# Получение публичного IP-адреса
-public_ip=$(curl -s ipinfo.io/ip)
+# Инициализация ноды
+nym-mixnode init --id my-mixnode --host $SERVER_IP --wallet-address $NYM_WALLET
 
-# Создание папки конфигурации и файла config.toml
-mkdir -p /root/.nym/nym-nodes/$node_id/config
-cat <<EOL > /root/.nym/nym-nodes/$node_id/config/config.toml
-id = "$node_id"
+# Исправление конфигурационного файла, если это необходимо
+CONFIG_FILE="/home/$USER/.nym/mixnodes/my-mixnode/config.toml"
 
-[host]
-public_ips = ["$public_ip"]
+if grep -q "{.*}" "$CONFIG_FILE"; then
+  sed -i 's/\({.*\)\(\n.*\)/\1}\2/' "$CONFIG_FILE"
+  echo "Исправлен синтаксис в $CONFIG_FILE"
+fi
 
-[mixnet]
-bind_address = "$public_ip:1789"
-
-[storage_paths]
-keys = { 
-  private_ed25519_identity_key_file = "/root/.nym/nym-nodes/$node_id/keys/private_ed25519_identity.pem", 
-  public_ed25519_identity_key_file = "/root/.nym/nym-nodes/$node_id/keys/public_ed25519_identity.pem", 
-  private_x25519_sphinx_key_file = "/root/.nym/nym-nodes/$node_id/keys/private_x25519_sphinx.pem", 
-  public_x25519_sphinx_key_file = "/root/.nym/nym-nodes/$node_id/keys/public_x25519_sphinx.pem",
-  private_x25519_noise_key_file = "/root/.nym/nym-nodes/$node_id/keys/private_x25519_noise.pem",
-  public_x25519_noise_key_file = "/root/.nym/nym-nodes/$node_id/keys/public_x25519_noise.pem"
-}
-clients = "/root/.nym/nym-nodes/$node_id/clients"
-EOL
-
-# Настройка брандмауэра
-sudo ufw allow 1789,1790,8000,22,80,443/tcp
-
-# Настройка хранения логов в systemd и перезагрузка systemd-journald
-sudo tee /etc/systemd/journald.conf <<EOF >/dev/null
-Storage=persistent
-EOF
-sudo systemctl restart systemd-journald
-
-# Создание и настройка сервиса systemd для управления узлом Nym
-sudo tee /etc/systemd/system/nym-node.service <<EOF >/dev/null
-[Unit]
-Description=Nym Node
+# Создание и активация системного сервиса
+echo "[Unit]
+Description=Nym Mixnode
 
 [Service]
 User=$USER
-ExecStart=/usr/local/bin/nym-node run --id '$node_id' --hostname '$public_ip' --accept-operator-terms-and-conditions
-KillSignal=SIGINT
+ExecStart=/usr/local/bin/nym-mixnode run --id my-mixnode
 Restart=on-failure
-RestartSec=30
-StartLimitInterval=350
-StartLimitBurst=10
-LimitNOFILE=65535
 
 [Install]
-WantedBy=multi-user.target
-EOF
-sudo echo "DefaultLimitNOFILE=65535" >> /etc/systemd/system.conf
-sudo systemctl daemon-reload
-sudo systemctl enable nym-node
-sudo systemctl start nym-node
+WantedBy=multi-user.target" | sudo tee /etc/systemd/system/nym-mixnode.service
 
-# Проверка статуса узла и вывод информации о состоянии установки
-echo -e '\n\e[42mПроверка состояния узла\e[0m\n' && sleep 1
-if systemctl is-active --quiet nym-node; then
-  echo -e "Ваш узел Nym \e[32м установлен и работает\e[39m!"
-  echo -е "Вы можете проверить состояние узла с помощью команды \e[7msystemctl status nym-node\e[0m"
-  echo -е "Нажмите \e[7mQ\e[0m для выхода из меню состояния"
-else
-  echo -е "Ваш узел Nym \e[31м не был установлен корректно\e[39m, пожалуйста, проверьте конфигурацию."
-fi
+sudo systemctl daemon-reload
+sudo systemctl enable nym-mixnode
+sudo systemctl start nym-mixnode
+
+echo "Установка завершена. Проверьте статус ноды командой: systemctl status nym-mixnode"
