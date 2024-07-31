@@ -63,7 +63,14 @@ public_ips = ["$public_ip"]
 bind_address = "$public_ip:1789"
 
 [storage_paths]
-keys = { private_identity = "/root/.nym/nym-nodes/$node_id/keys/private_identity.pem", public_identity = "/root/.nym/nym-nodes/$node_id/keys/public_identity.pem", private_sphinx = "/root/.nym/nym-nodes/$node_id/keys/private_sphinx.pem", public_sphinx = "/root/.nym/nym-nodes/$node_id/keys/public_sphinx.pem" }
+keys = { 
+  private_ed25519_identity_key_file = "/root/.nym/nym-nodes/$node_id/keys/private_ed25519_identity.pem", 
+  public_ed25519_identity_key_file = "/root/.nym/nym-nodes/$node_id/keys/public_ed25519_identity.pem", 
+  private_x25519_sphinx_key_file = "/root/.nym/nym-nodes/$node_id/keys/private_x25519_sphinx.pem", 
+  public_x25519_sphinx_key_file = "/root/.nym/nym-nodes/$node_id/keys/public_x25519_sphinx.pem",
+  private_x25519_noise_key_file = "/root/.nym/nym-nodes/$node_id/keys/private_x25519_noise.pem",
+  public_x25519_noise_key_file = "/root/.nym/nym-nodes/$node_id/keys/public_x25519_noise.pem"
+}
 clients = "/root/.nym/nym-nodes/$node_id/clients"
 EOL
 
