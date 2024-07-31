@@ -1,12 +1,13 @@
+#!/bin/bash
+
 # Функция для проверки существования команды
-exists()
-{
+exists() {
   command -v "$1" >/dev/null 2>&1
 }
 
 # Проверка, установлен ли curl, и его установка, если он отсутствует
 if exists curl; then
-echo ''
+  echo "curl установлен"
 else
   sudo apt update && sudo apt install curl -y < "/dev/null"
 fi
@@ -22,8 +23,8 @@ sleep 1 && curl -s https://api.nodes.guru/logo.sh | bash && sleep 1
 
 # Проверка, установлен ли node_id; если нет, запрос имени узла у пользователя
 if [ -z "$node_id" ]; then
-read -p "Введите имя узла: " node_id
-echo 'export node_id='\"${node_id}\" >> $HOME/.bash_profile
+  read -p "Введите имя узла: " node_id
+  echo 'export node_id='\"${node_id}\" >> $HOME/.bash_profile
 fi
 
 # Добавление source .bashrc в .bash_profile и его загрузка
@@ -37,7 +38,7 @@ sudo dpkg --configure -a
 sudo apt install ufw make clang pkg-config libssl-dev build-essential git -y -qq < "/dev/null"
 
 # Установка Rust
-sudo curl https://sh.rustup.rs -sSf | sh -s -- -y
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source $HOME/.cargo/env
 rustup update
 
@@ -51,8 +52,11 @@ git checkout $LATEST_RELEASE
 cargo build --release --bin nym-node
 sudo mv target/release/nym-node /usr/local/bin/
 
-# Инициализация узла Nym
-nym-node run --id $node_id --hostname $(curl -s ipinfo.io/ip)
+# Получение внешнего IP-адреса и добавление в конфигурацию
+my_ip=$(curl -s ipinfo.io/ip)
+mkdir -p /root/.nym/nym-nodes/$node_id/config
+echo '[host]' > /root/.nym/nym-nodes/$node_id/config/config.toml
+echo 'public_ips = ["'$my_ip'"]' >> /root/.nym/nym-nodes/$node_id/config/config.toml
 
 # Настройка брандмауэра
 sudo ufw allow 1789,1790,8000,22,80,443/tcp
@@ -70,7 +74,7 @@ Description=Nym Node
 
 [Service]
 User=$USER
-ExecStart=/usr/local/bin/nym-node run --id '$node_id'
+ExecStart=/usr/local/bin/nym-node run --id '$node_id' --hostname '$my_ip' --accept-operator-terms-and-conditions
 KillSignal=SIGINT
 Restart=on-failure
 RestartSec=30
