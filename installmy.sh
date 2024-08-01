@@ -24,6 +24,13 @@ git checkout $LATEST_RELEASE
 cargo build --release --bin nym-node
 sudo mv target/release/nym-node /usr/local/bin/
 
+# Открытие необходимых портов
+sudo ufw allow 1789/tcp
+sudo ufw allow 1790/tcp
+sudo ufw allow 8080/tcp
+sudo ufw allow 22/tcp
+sudo ufw enable
+
 nym-node run --id $NODE_ID --init-only --mode mixnode --verloc-bind-address 0.0.0.0:1790 --public-ips "$(curl -4 https://ifconfig.me)" --accept-operator-terms-and-conditions
 
 echo "[Unit]
