@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Запрос ID для миксноды
+echo "Введите ID для миксноды:"
+read NODE_ID
+
+# Обновление системы и установка необходимых пакетов
 sudo apt update < "/dev/null"
 sudo dpkg --configure -a
 sudo apt install ufw make clang pkg-config libssl-dev build-essential git -y -qq < "/dev/null"
@@ -19,24 +24,23 @@ git checkout $LATEST_RELEASE
 cargo build --release --bin nym-node
 sudo mv target/release/nym-node /usr/local/bin/
 
-nym-node run --id test --init-only --mode mixnode --verloc-bind-address 0.0.0.0:1790 --public-ips "$(curl -4 https://ifconfig.me)" --accept-operator-terms-and-conditions
+nym-node run --id $NODE_ID --init-only --mode mixnode --verloc-bind-address 0.0.0.0:1790 --public-ips "$(curl -4 https://ifconfig.me)" --accept-operator-terms-and-conditions
 
-echo '[Unit]
-Description=Nym Node 1.1.5
+echo "[Unit]
+Description=Nym Node
 StartLimitInterval=350
 StartLimitBurst=10
 
 [Service]
 User=root
 LimitNOFILE=65536
-ExecStart=/usr/local/bin/nym-node run --id test --deny-init --mode mixnode --accept-operator-terms-and-conditions
+ExecStart=/usr/local/bin/nym-node run --id $NODE_ID --deny-init --mode mixnode --accept-operator-terms-and-conditions
 KillSignal=SIGINT
 Restart=on-failure
 RestartSec=30
 
 [Install]
-WantedBy=multi-user.target' | tee /etc/systemd/system/nym-node.service
+WantedBy=multi-user.target" | sudo tee /etc/systemd/system/nym-node.service
 
 systemctl enable nym-node
-
 systemctl start nym-node && journalctl -u nym-node -f
