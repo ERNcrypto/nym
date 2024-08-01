@@ -19,6 +19,15 @@ sudo mv nym-mixnode /usr/local/bin/
 # Инициализация ноды
 nym-mixnode init --id my-mixnode --host $SERVER_IP --wallet-address $NYM_WALLET
 
+# Исправление конфигурационного файла, если это необходимо
+CONFIG_FILE="/home/$USER/.nym/mixnodes/my-mixnode/config.toml"
+
+# Проверка и исправление синтаксиса inline table
+if grep -q "{.*}" "$CONFIG_FILE"; then
+  sed -i 's/\({[^}]*\)[^}]*$/\1}/' "$CONFIG_FILE"
+  echo "Исправлен синтаксис в $CONFIG_FILE"
+fi
+
 # Создание и активация системного сервиса
 echo "[Unit]
 Description=Nym Mixnode
