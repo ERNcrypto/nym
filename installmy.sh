@@ -28,6 +28,7 @@ sudo mv target/release/nym-node /usr/local/bin/
 sudo ufw allow 1789/tcp
 sudo ufw allow 1790/tcp
 sudo ufw allow 8080/tcp
+sudo ufw allow 8000/tcp
 sudo ufw allow 22/tcp
 sudo ufw enable
 
