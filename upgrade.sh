@@ -1,38 +1,15 @@
 #!/bin/bash
 
-# Запрос ID для миксноды
-echo "Введите ID для миксноды:"
-read NODE_ID
+wget https://github.com/nymtech/nym/releases/download/nym-binaries-v2024.8-wispa/nym-node
 
-# Проверка текущей версии
-CURRENT_VERSION=$(nym-node --version)
-echo "Текущая версия: $CURRENT_VERSION"
+chmod +x nym-node
 
-# Скачивание последней версии бинарника
-LATEST_RELEASE=$(curl -s "https://api.github.com/repos/nymtech/nym/releases/latest" | grep '"tag_name":' | awk -F '"' '{print $4}')
-wget https://github.com/nymtech/nym/releases/download/$LATEST_RELEASE/nym-node -O nym-node-latest
+service nym-node stop
 
-# Выдаем права на исполнение
-chmod +x nym-node-latest
+cp -i ./nym-node /usr/local/bin
 
-# Проверка версии нового бинарника
-NEW_VERSION=$(./nym-node-latest --version)
-echo "Новая версия: $NEW_VERSION"
+rm ./nym-node
 
-# Остановка текущей ноды
-sudo systemctl stop nym-node
+service nym-node start
 
-# Замена бинарника
-sudo cp -i ./nym-node-latest /usr/local/bin/nym-node
-
-# Удаление временного бинарника
-rm ./nym-node-latest
-
-# Запуск ноды
-sudo systemctl start nym-node
-
-# Проверка статуса ноды
-sudo systemctl status nym-node
-
-# Проверка логов ноды
 journalctl -u nym-node -f
