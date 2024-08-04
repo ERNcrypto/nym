@@ -1,12 +1,14 @@
 #!/bin/bash
 
+cd
+
 wget https://github.com/nymtech/nym/releases/download/nym-binaries-v2024.8-wispa/nym-node
 
 chmod +x nym-node
 
 service nym-node stop
 
-cp -i ./nym-node /usr/local/bin
+cp -i ./nym-node /usr/local/bin -y
 
 rm ./nym-node
 
