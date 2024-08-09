@@ -2,7 +2,7 @@
 
 cd
 
-wget https://github.com/nymtech/nym/releases/download/nym-binaries-v2024.9-topdeck/nym-node
+wget https://github.com/nymtech/nym/releases/download/nym-binaries-v2024.8-wispa/nym-node
 
 chmod +x nym-node
 
