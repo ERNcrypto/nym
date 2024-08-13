@@ -8,7 +8,9 @@ chmod +x nym-node
 
 service nym-node stop
 
-echo "Y" | cp -i ./nym-node /usr/local/bin 
+cp -i ./nym-node /usr/local/bin 
+
+y
 
 rm ./nym-node
 
